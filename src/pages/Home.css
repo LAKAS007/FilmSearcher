@@ -1,0 +1,138 @@
+.home {
+  min-height: 100vh;
+}
+
+.home__hero {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%);
+  padding: 4rem 2rem 3rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.home__title {
+  margin: 0 0 1rem 0;
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #e50914 0%, #ff6b6b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.home__subtitle {
+  margin: 0 0 2rem 0;
+  font-size: 1.25rem;
+  color: #999;
+}
+
+.home__search {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.home__container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.home__filters {
+  margin-bottom: 2rem;
+}
+
+.home__categories {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.category-btn {
+  background: #1a1a1a;
+  border: 2px solid transparent;
+  color: #999;
+  padding: 0.75rem 1.5rem;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.category-btn:hover {
+  color: #fff;
+  border-color: rgba(229, 9, 20, 0.3);
+}
+
+.category-btn--active {
+  background: #e50914;
+  color: #fff;
+  border-color: #e50914;
+}
+
+.home__genres {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.genre-btn {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #999;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.genre-btn:hover {
+  color: #fff;
+  border-color: #666;
+}
+
+.genre-btn--active {
+  background: #e50914;
+  color: #fff;
+  border-color: #e50914;
+}
+
+.home__results {
+  margin-top: 2rem;
+}
+
+.home__results-title {
+  margin: 0 0 1.5rem 0;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .home__hero {
+    padding: 2rem 1rem;
+  }
+
+  .home__title {
+    font-size: 2rem;
+  }
+
+  .home__subtitle {
+    font-size: 1rem;
+  }
+
+  .home__container {
+    padding: 1rem;
+  }
+
+  .home__categories {
+    justify-content: center;
+  }
+
+  .category-btn {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+}
