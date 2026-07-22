@@ -36,7 +36,15 @@ interface SearchIndexRequest {
   query: string;
   includeGenres: number[];
   excludeGenres: number[];
+  referenceMovieId?: number;
   referenceTitle?: string;
+  limit: number;
+}
+
+interface SuggestTitlesRequest {
+  type: 'suggest-titles';
+  requestId: string;
+  query: string;
   limit: number;
 }
 
@@ -56,13 +64,24 @@ interface IndexResultResponse extends StaticIndexSearchResult {
   requestId: string;
 }
 
+interface TitleSuggestionsResponse {
+  type: 'title-suggestions';
+  requestId: string;
+  movies: Movie[];
+}
+
 interface ErrorResponse {
   type: 'error';
   requestId: string;
   message: string;
 }
 
-type WorkerResponse = ProgressResponse | RankResultResponse | IndexResultResponse | ErrorResponse;
+type WorkerResponse =
+  | ProgressResponse
+  | RankResultResponse
+  | IndexResultResponse
+  | TitleSuggestionsResponse
+  | ErrorResponse;
 
 interface PendingRankRequest {
   kind: 'rank';
@@ -78,7 +97,14 @@ interface PendingIndexRequest {
   onProgress?: (progress: SemanticSearchProgress) => void;
 }
 
-type PendingRequest = PendingRankRequest | PendingIndexRequest;
+interface PendingTitleSuggestionsRequest {
+  kind: 'title-suggestions';
+  resolve: (movies: Movie[]) => void;
+  reject: (error: Error) => void;
+  onProgress?: (progress: SemanticSearchProgress) => void;
+}
+
+type PendingRequest = PendingRankRequest | PendingIndexRequest | PendingTitleSuggestionsRequest;
 
 class BrowserSemanticSearch {
   private readonly worker = new Worker(new URL('../../workers/embedding.worker.ts', import.meta.url), {
@@ -119,6 +145,7 @@ class BrowserSemanticSearch {
     filters: {
       includeGenres?: number[];
       excludeGenres?: number[];
+      referenceMovieId?: number;
       referenceTitle?: string;
       limit?: number;
     },
@@ -135,8 +162,35 @@ class BrowserSemanticSearch {
         query,
         includeGenres: filters.includeGenres ?? [],
         excludeGenres: filters.excludeGenres ?? [],
+        referenceMovieId: filters.referenceMovieId,
         referenceTitle: filters.referenceTitle,
         limit: filters.limit ?? 60,
+      };
+
+      this.worker.postMessage(request);
+    });
+  }
+
+  suggestTitles(
+    query: string,
+    limit = 6,
+    onProgress?: (progress: SemanticSearchProgress) => void,
+  ): Promise<Movie[]> {
+    const requestId = crypto.randomUUID();
+
+    return new Promise((resolve, reject) => {
+      this.pending.set(requestId, {
+        kind: 'title-suggestions',
+        resolve,
+        reject,
+        onProgress,
+      });
+
+      const request: SuggestTitlesRequest = {
+        type: 'suggest-titles',
+        requestId,
+        query,
+        limit,
       };
 
       this.worker.postMessage(request);
@@ -179,6 +233,11 @@ class BrowserSemanticSearch {
       return;
     }
 
+    if (response.type === 'title-suggestions' && request.kind === 'title-suggestions') {
+      request.resolve(response.movies);
+      return;
+    }
+
     request.reject(new Error('AI worker вернул ответ неожиданного типа'));
   };
 
@@ -206,11 +265,18 @@ export const searchStaticMovieIndex = (
   filters: {
     includeGenres?: number[];
     excludeGenres?: number[];
+    referenceMovieId?: number;
     referenceTitle?: string;
     limit?: number;
   },
   onProgress?: (progress: SemanticSearchProgress) => void,
 ) => getSemanticSearch().searchIndex(query, filters, onProgress);
+
+export const suggestMovieTitles = (
+  query: string,
+  limit = 6,
+  onProgress?: (progress: SemanticSearchProgress) => void,
+) => getSemanticSearch().suggestTitles(query, limit, onProgress);
 
 export const rankWithBrowserModel = (
   query: string,

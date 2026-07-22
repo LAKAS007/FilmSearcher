@@ -20,7 +20,15 @@ interface SearchIndexRequest {
   query: string;
   includeGenres: number[];
   excludeGenres: number[];
+  referenceMovieId?: number;
   referenceTitle?: string;
+  limit: number;
+}
+
+interface SuggestTitlesRequest {
+  type: 'suggest-titles';
+  requestId: string;
+  query: string;
   limit: number;
 }
 
@@ -55,7 +63,7 @@ interface LoadedMovieIndex {
   embeddings: Int8Array;
 }
 
-type WorkerRequest = RankRequest | SearchIndexRequest | DisposeRequest;
+type WorkerRequest = RankRequest | SearchIndexRequest | SuggestTitlesRequest | DisposeRequest;
 type SearchStage = 'index' | 'model' | 'ranking';
 
 const FALLBACK_BATCH_SIZE = 8;
@@ -280,6 +288,16 @@ const resolveReferenceMovie = async (
   request: SearchIndexRequest,
   movieIndex: LoadedMovieIndex,
 ) => {
+  if (request.referenceMovieId) {
+    const referenceIndex = movieIndex.movies.findIndex(
+      (movie) => movie.id === request.referenceMovieId,
+    );
+
+    if (referenceIndex >= 0) {
+      return { index: referenceIndex, movie: movieIndex.movies[referenceIndex] };
+    }
+  }
+
   if (!request.referenceTitle) return undefined;
 
   const { movies, embeddings, manifest } = movieIndex;
@@ -314,6 +332,82 @@ const resolveReferenceMovie = async (
   }
 
   return bestIndex >= 0 ? { index: bestIndex, movie: movies[bestIndex] } : undefined;
+};
+
+const getLexicalTitleScore = (title: string, query: string) => {
+  if (title === query) return 4;
+  if (title.startsWith(query)) return 3;
+  if (title.split(' ').some((word) => word.startsWith(query))) return 2;
+  if (title.includes(query)) return 1;
+  return 0;
+};
+
+const suggestTitles = async (request: SuggestTitlesRequest) => {
+  const movieIndex = await getMovieIndex(request.requestId);
+  const { movies, embeddings, manifest } = movieIndex;
+  const normalizedQuery = normalizeTitle(request.query);
+
+  if (!normalizedQuery) {
+    self.postMessage({
+      type: 'title-suggestions',
+      requestId: request.requestId,
+      movies: [],
+    });
+    return;
+  }
+
+  const lexicalMatches = movies
+    .map((movie, index) => ({
+      index,
+      score: getLexicalTitleScore(normalizeTitle(movie.title), normalizedQuery),
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => {
+      const scoreDifference = right.score - left.score;
+      if (scoreDifference) return scoreDifference;
+      return getQualityPrior(movies[right.index]) - getQualityPrior(movies[left.index]);
+    });
+
+  if (lexicalMatches.length) {
+    self.postMessage({
+      type: 'title-suggestions',
+      requestId: request.requestId,
+      movies: lexicalMatches
+        .slice(0, Math.max(1, request.limit))
+        .map(({ index }) => movies[index]),
+    });
+    return;
+  }
+
+  const titleEmbedding = await embedQuery(
+    request.requestId,
+    request.query,
+    `Сопоставляю название «${request.query}» локально`,
+  );
+  const semanticMatches: Array<{ index: number; score: number }> = [];
+
+  for (let index = 0; index < movies.length; index += 1) {
+    semanticMatches.push({
+      index,
+      score:
+        dotProductInt8(
+          titleEmbedding,
+          embeddings,
+          index * manifest.dimensions,
+          manifest.quantization.scale,
+        ) +
+        QUALITY_WEIGHT * getQualityPrior(movies[index]),
+    });
+  }
+
+  semanticMatches.sort((left, right) => right.score - left.score);
+  self.postMessage({
+    type: 'title-suggestions',
+    requestId: request.requestId,
+    movies: semanticMatches
+      .slice(0, Math.max(1, request.limit))
+      .map(({ index }) => movies[index]),
+  });
 };
 
 const sharedGenreCount = (left: number[], right: Set<number>) =>
@@ -447,7 +541,12 @@ self.addEventListener('message', (event: MessageEvent<WorkerRequest>) => {
     return;
   }
 
-  const task = request.type === 'search-index' ? searchStaticIndex(request) : rankCandidates(request);
+  const task =
+    request.type === 'search-index'
+      ? searchStaticIndex(request)
+      : request.type === 'suggest-titles'
+        ? suggestTitles(request)
+        : rankCandidates(request);
 
   void task.catch((error: unknown) => {
     self.postMessage({

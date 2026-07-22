@@ -9,7 +9,9 @@ import { interpretMovieQuery } from '../features/ai-search/queryInterpreter';
 import {
   rankWithBrowserModel,
   searchStaticMovieIndex,
+  suggestMovieTitles,
 } from '../features/ai-search/browserSemanticSearch';
+import type { AiSearchRequest } from '../components/AiSearch';
 import './Home.css';
 
 const AI_CANDIDATE_PAGES = 3;
@@ -145,7 +147,7 @@ export const Home = () => {
     setSearchQuery('');
   };
 
-  const handleAiSearch = async (query: string) => {
+  const handleAiSearch = async ({ query, referenceMovie }: AiSearchRequest) => {
     setAiQuery(query);
     setAiLoading(true);
     setAiMovies([]);
@@ -162,7 +164,8 @@ export const Home = () => {
           {
             includeGenres: intent.includeGenres,
             excludeGenres: intent.excludeGenres,
-            referenceTitle: intent.referenceTitle,
+            referenceMovieId: referenceMovie?.id,
+            referenceTitle: referenceMovie ? undefined : intent.referenceTitle,
             limit: intent.maxRuntime ? RUNTIME_CANDIDATE_LIMIT : AI_RESULT_LIMIT,
           },
           ({ message, progress }) => {
@@ -302,6 +305,7 @@ export const Home = () => {
             status={aiStatus}
             progress={aiProgress}
             onSearch={handleAiSearch}
+            onSuggestTitles={suggestMovieTitles}
           />
         )}
       </div>

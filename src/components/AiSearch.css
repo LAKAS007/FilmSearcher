@@ -111,6 +111,47 @@
   background: rgba(24, 89, 172, 0.55);
 }
 
+.ai-search__intent {
+  width: calc(100% - 2.9rem);
+  margin: 0 0 0.65rem 2.9rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+  color: #dce9ff;
+  text-align: left;
+  background: rgba(20, 82, 159, 0.36);
+  border: 1px solid rgba(82, 157, 255, 0.45);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.ai-search__intent:hover {
+  background: rgba(28, 100, 190, 0.5);
+  border-color: #4c99f5;
+  transform: translateY(-1px);
+}
+
+.ai-search__intent > span:nth-child(2) {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.ai-search__intent small {
+  color: #85a9d7;
+}
+
+.ai-search__intent-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(52, 135, 237, 0.22);
+}
+
 .ai-search__form {
   display: flex;
   align-items: flex-end;
@@ -176,6 +217,170 @@
   text-align: center;
 }
 
+.ai-search__reference {
+  position: relative;
+  display: grid;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid rgba(82, 148, 237, 0.45);
+  border-radius: 18px;
+  background: rgba(7, 20, 38, 0.92);
+  box-shadow: 0 14px 50px rgba(0, 55, 132, 0.18);
+}
+
+.ai-search__reference-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ai-search__reference-heading > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.ai-search__reference-heading span,
+.ai-search__title-field > span {
+  color: #7195c4;
+  font-size: 0.75rem;
+}
+
+.ai-search__reference-heading strong {
+  color: #e7f0ff;
+}
+
+.ai-search__reference-heading button {
+  width: 30px;
+  height: 30px;
+  color: #92afd3;
+  background: transparent;
+  border: 1px solid rgba(100, 149, 211, 0.28);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.ai-search__title-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ai-search__title-field input {
+  width: 100%;
+  padding: 0.85rem 0.9rem;
+  color: #fff;
+  background: rgba(16, 42, 75, 0.72);
+  border: 1px solid rgba(81, 146, 231, 0.42);
+  border-radius: 12px;
+  outline: none;
+  font: inherit;
+}
+
+.ai-search__title-field input:focus {
+  border-color: #3b8df1;
+  box-shadow: 0 0 0 3px rgba(38, 128, 239, 0.12);
+}
+
+.ai-search__title-results {
+  max-height: 315px;
+  overflow-y: auto;
+  padding: 0.35rem;
+  background: #0c203a;
+  border: 1px solid rgba(82, 148, 237, 0.34);
+  border-radius: 12px;
+}
+
+.ai-search__title-results > p {
+  margin: 0;
+  padding: 0.8rem;
+  color: #829dbc;
+  font-size: 0.85rem;
+}
+
+.ai-search__title-results button {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.45rem;
+  color: #e7f0ff;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.ai-search__title-results button:hover {
+  background: rgba(48, 120, 211, 0.2);
+}
+
+.ai-search__title-results img,
+.ai-search__poster-placeholder {
+  width: 36px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: rgba(82, 148, 237, 0.13);
+}
+
+.ai-search__poster-placeholder {
+  display: grid;
+  place-items: center;
+}
+
+.ai-search__title-results button > span:last-child,
+.ai-search__selected-movie > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.ai-search__title-results small,
+.ai-search__selected-movie small {
+  color: #7896ba;
+}
+
+.ai-search__selected-movie {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.75rem;
+  color: #dce9ff;
+  background: rgba(32, 112, 207, 0.17);
+  border: 1px solid rgba(73, 153, 247, 0.3);
+  border-radius: 12px;
+}
+
+.ai-search__selected-movie > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: #fff;
+  background: #257ce6;
+  border-radius: 50%;
+}
+
+.ai-search__reference-submit {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.8rem 1rem;
+  color: #fff;
+  background: #1268d6;
+  border: 0;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-search__reference-submit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .ai-search__model-note {
   margin: 0.35rem 0 0;
   color: #49637f;
@@ -189,6 +394,11 @@
   }
 
   .ai-search__suggestions {
+    margin-left: 0;
+  }
+
+  .ai-search__intent {
+    width: 100%;
     margin-left: 0;
   }
 
