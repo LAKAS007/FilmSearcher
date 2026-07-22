@@ -162,6 +162,7 @@ export const Home = () => {
           {
             includeGenres: intent.includeGenres,
             excludeGenres: intent.excludeGenres,
+            referenceTitle: intent.referenceTitle,
             limit: intent.maxRuntime ? RUNTIME_CANDIDATE_LIMIT : AI_RESULT_LIMIT,
           },
           ({ message, progress }) => {
@@ -190,9 +191,12 @@ export const Home = () => {
           : staticResult.movies.slice(0, AI_RESULT_LIMIT);
 
         setAiMovies(resultMovies);
+        const referenceLabel = staticResult.referenceMovie
+          ? `Нашёл референс «${staticResult.referenceMovie.title}» — `
+          : 'Готово — ';
         setAiStatus(
           resultMovies.length
-            ? `Готово — просмотрено ${staticResult.indexSize.toLocaleString('ru-RU')} фильмов локально`
+            ? `${referenceLabel}просмотрено ${staticResult.indexSize.toLocaleString('ru-RU')} фильмов локально`
             : `Среди лучших совпадений нет фильмов короче ${intent.maxRuntime} минут`,
         );
         setAiProgress(100);

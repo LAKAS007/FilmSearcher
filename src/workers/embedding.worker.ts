@@ -20,6 +20,7 @@ interface SearchIndexRequest {
   query: string;
   includeGenres: number[];
   excludeGenres: number[];
+  referenceTitle?: string;
   limit: number;
 }
 
@@ -59,6 +60,11 @@ type SearchStage = 'index' | 'model' | 'ranking';
 
 const FALLBACK_BATCH_SIZE = 8;
 const QUALITY_WEIGHT = 0.12;
+const REFERENCE_SEMANTIC_WEIGHT = 0.74;
+const REFERENCE_GENRE_WEIGHT = 0.18;
+const REFERENCE_QUALITY_WEIGHT = 0.08;
+const ANIMATION_MISMATCH_PENALTY = 0.08;
+const ANIMATION_GENRE_ID = 16;
 
 env.useBrowserCache = true;
 
@@ -175,8 +181,8 @@ const getMovieIndex = (requestId: string) => {
 const copyEmbedding = (data: Float32Array, dimensions: number) =>
   Float32Array.from(data.subarray(0, dimensions));
 
-const embedQuery = async (requestId: string, query: string) => {
-  postProgress(requestId, 'model', 'Понимаю смысл запроса');
+const embedQuery = async (requestId: string, query: string, message = 'Понимаю смысл запроса') => {
+  postProgress(requestId, 'model', message);
   const extractor = await getExtractor(requestId);
   const output = await extractor(`${modelConfig.queryPrefix}${query}`, {
     pooling: 'mean',
@@ -240,17 +246,109 @@ const getQualityPrior = (movie: Movie) => {
   return popularity * 0.6 + rating * 0.4;
 };
 
+const normalizeTitle = (title: string) =>
+  title
+    .toLocaleLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+
+const copyNormalizedIndexEmbedding = (
+  embeddings: Int8Array,
+  offset: number,
+  dimensions: number,
+  scale: number,
+) => {
+  const embedding = new Float32Array(dimensions);
+  let squaredNorm = 0;
+
+  for (let index = 0; index < dimensions; index += 1) {
+    const value = embeddings[offset + index] / scale;
+    embedding[index] = value;
+    squaredNorm += value * value;
+  }
+
+  const norm = Math.sqrt(squaredNorm) || 1;
+  for (let index = 0; index < dimensions; index += 1) {
+    embedding[index] /= norm;
+  }
+
+  return embedding;
+};
+
+const resolveReferenceMovie = async (
+  request: SearchIndexRequest,
+  movieIndex: LoadedMovieIndex,
+) => {
+  if (!request.referenceTitle) return undefined;
+
+  const { movies, embeddings, manifest } = movieIndex;
+  const normalizedReferenceTitle = normalizeTitle(request.referenceTitle);
+  const exactIndex = movies.findIndex(
+    (movie) => normalizeTitle(movie.title) === normalizedReferenceTitle,
+  );
+
+  if (exactIndex >= 0) return { index: exactIndex, movie: movies[exactIndex] };
+
+  const titleEmbedding = await embedQuery(
+    request.requestId,
+    request.referenceTitle,
+    `Ищу фильм-референс «${request.referenceTitle}»`,
+  );
+  let bestIndex = -1;
+  let bestScore = Number.NEGATIVE_INFINITY;
+
+  for (let index = 0; index < movies.length; index += 1) {
+    const semanticScore = dotProductInt8(
+      titleEmbedding,
+      embeddings,
+      index * manifest.dimensions,
+      manifest.quantization.scale,
+    );
+    const score = semanticScore + QUALITY_WEIGHT * getQualityPrior(movies[index]);
+
+    if (score > bestScore) {
+      bestIndex = index;
+      bestScore = score;
+    }
+  }
+
+  return bestIndex >= 0 ? { index: bestIndex, movie: movies[bestIndex] } : undefined;
+};
+
+const sharedGenreCount = (left: number[], right: Set<number>) =>
+  left.reduce((count, genreId) => count + Number(right.has(genreId)), 0);
+
 const searchStaticIndex = async (request: SearchIndexRequest) => {
   const movieIndex = await getMovieIndex(request.requestId);
-  const queryEmbedding = await embedQuery(request.requestId, request.query);
   const { movies, embeddings, manifest } = movieIndex;
+  const reference = await resolveReferenceMovie(request, movieIndex);
+  const queryEmbedding = reference
+    ? copyNormalizedIndexEmbedding(
+        embeddings,
+        reference.index * manifest.dimensions,
+        manifest.dimensions,
+        manifest.quantization.scale,
+      )
+    : await embedQuery(request.requestId, request.query);
+  const referenceGenres = new Set(reference?.movie.genre_ids ?? []);
+  const minimumSharedGenres = referenceGenres.size >= 3 ? 2 : Math.min(1, referenceGenres.size);
   const scored: Array<{ index: number; score: number }> = [];
 
   postProgress(request.requestId, 'ranking', `Сравниваю запрос с ${manifest.count.toLocaleString('ru-RU')} фильмов`, 0);
 
   for (let movieIndexPosition = 0; movieIndexPosition < movies.length; movieIndexPosition += 1) {
     const movie = movies[movieIndexPosition];
-    if (matchesGenres(movie, request.includeGenres, request.excludeGenres)) {
+    const movieGenres = movie.genre_ids ?? [];
+    const sharedGenres = reference ? sharedGenreCount(movieGenres, referenceGenres) : 0;
+    const matchesReference =
+      !reference ||
+      (movie.id !== reference.movie.id && sharedGenres >= minimumSharedGenres);
+
+    if (
+      matchesReference &&
+      matchesGenres(movie, request.includeGenres, request.excludeGenres)
+    ) {
       const semanticScore = dotProductInt8(
         queryEmbedding,
         embeddings,
@@ -258,10 +356,25 @@ const searchStaticIndex = async (request: SearchIndexRequest) => {
         manifest.quantization.scale,
       );
 
-      scored.push({
-        index: movieIndexPosition,
-        score: semanticScore + QUALITY_WEIGHT * getQualityPrior(movie),
-      });
+      if (reference) {
+        const genreOverlap = sharedGenres / Math.max(1, referenceGenres.size);
+        const animationMismatch =
+          !referenceGenres.has(ANIMATION_GENRE_ID) && movieGenres.includes(ANIMATION_GENRE_ID);
+
+        scored.push({
+          index: movieIndexPosition,
+          score:
+            REFERENCE_SEMANTIC_WEIGHT * semanticScore +
+            REFERENCE_GENRE_WEIGHT * genreOverlap +
+            REFERENCE_QUALITY_WEIGHT * getQualityPrior(movie) -
+            (animationMismatch ? ANIMATION_MISMATCH_PENALTY : 0),
+        });
+      } else {
+        scored.push({
+          index: movieIndexPosition,
+          score: semanticScore + QUALITY_WEIGHT * getQualityPrior(movie),
+        });
+      }
     }
 
     const processed = movieIndexPosition + 1;
@@ -282,6 +395,7 @@ const searchStaticIndex = async (request: SearchIndexRequest) => {
     movies: scored.slice(0, Math.max(1, request.limit)).map(({ index }) => movies[index]),
     candidateCount: scored.length,
     indexSize: movies.length,
+    referenceMovie: reference?.movie,
   });
 };
 

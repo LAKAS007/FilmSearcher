@@ -14,6 +14,7 @@ export interface StaticIndexSearchResult {
   movies: Movie[];
   candidateCount: number;
   indexSize: number;
+  referenceMovie?: Movie;
 }
 
 export interface SemanticSearchProgress {
@@ -35,6 +36,7 @@ interface SearchIndexRequest {
   query: string;
   includeGenres: number[];
   excludeGenres: number[];
+  referenceTitle?: string;
   limit: number;
 }
 
@@ -114,7 +116,12 @@ class BrowserSemanticSearch {
 
   searchIndex(
     query: string,
-    filters: { includeGenres?: number[]; excludeGenres?: number[]; limit?: number },
+    filters: {
+      includeGenres?: number[];
+      excludeGenres?: number[];
+      referenceTitle?: string;
+      limit?: number;
+    },
     onProgress?: (progress: SemanticSearchProgress) => void,
   ): Promise<StaticIndexSearchResult> {
     const requestId = crypto.randomUUID();
@@ -128,6 +135,7 @@ class BrowserSemanticSearch {
         query,
         includeGenres: filters.includeGenres ?? [],
         excludeGenres: filters.excludeGenres ?? [],
+        referenceTitle: filters.referenceTitle,
         limit: filters.limit ?? 60,
       };
 
@@ -166,6 +174,7 @@ class BrowserSemanticSearch {
         movies: response.movies,
         candidateCount: response.candidateCount,
         indexSize: response.indexSize,
+        referenceMovie: response.referenceMovie,
       });
       return;
     }
@@ -194,7 +203,12 @@ const getSemanticSearch = () => {
 
 export const searchStaticMovieIndex = (
   query: string,
-  filters: { includeGenres?: number[]; excludeGenres?: number[]; limit?: number },
+  filters: {
+    includeGenres?: number[];
+    excludeGenres?: number[];
+    referenceTitle?: string;
+    limit?: number;
+  },
   onProgress?: (progress: SemanticSearchProgress) => void,
 ) => getSemanticSearch().searchIndex(query, filters, onProgress);
 

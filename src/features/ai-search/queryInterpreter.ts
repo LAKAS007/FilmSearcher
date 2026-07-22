@@ -1,6 +1,7 @@
 export interface MovieSearchIntent {
   includeGenres: number[];
   excludeGenres: number[];
+  referenceTitle?: string;
   maxRuntime?: number;
   sortBy: 'popularity.desc' | 'vote_average.desc';
 }
@@ -26,6 +27,31 @@ const GENRE_KEYWORDS: Array<{ genreId: number; words: string[] }> = [
 const EXCLUSION_MARKERS = ['без ', 'не хочу ', 'только не ', 'никак'];
 
 const hasAny = (text: string, words: string[]) => words.some((word) => text.includes(word));
+
+const REFERENCE_PATTERNS = [
+  /(?:похож\p{L}*\s+на|в\s+духе)\s+(?:фильм\p{L}*\s+)?(.+)/iu,
+  /(?:фильм|кино|что(?:-то)?|что-нибудь)\s+как\s+(?:фильм\p{L}*\s+)?(.+)/iu,
+  /(?:movies?|films?|something)\s+(?:similar\s+to|like)\s+(.+)/iu,
+];
+
+const cleanReferenceTitle = (value: string) =>
+  value
+    .split(/[,;]|\s+(?:но|без|до|только\s+не|и\s+чтобы)\b/iu, 1)[0]
+    .trim()
+    .replace(/^[«»"'“”]+|[«»"'“”.!?]+$/gu, '')
+    .trim();
+
+export const extractReferenceTitle = (query: string) => {
+  for (const pattern of REFERENCE_PATTERNS) {
+    const match = query.match(pattern);
+    if (!match) continue;
+
+    const title = cleanReferenceTitle(match[1]);
+    if (title.length >= 2) return title;
+  }
+
+  return undefined;
+};
 
 const isExcluded = (text: string, words: string[]) =>
   EXCLUSION_MARKERS.some((marker) =>
@@ -66,6 +92,7 @@ export const interpretMovieQuery = (query: string): MovieSearchIntent => {
   return {
     includeGenres: [...new Set(includeGenres)],
     excludeGenres: [...new Set(excludeGenres)],
+    referenceTitle: extractReferenceTitle(query),
     maxRuntime,
     sortBy: wantsTopRated ? 'vote_average.desc' : 'popularity.desc',
   };
