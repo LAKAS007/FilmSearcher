@@ -49,6 +49,27 @@ class TMDBService {
     return this.fetch<MovieResponse>(`/discover/movie?with_genres=${genreId}&page=${page}&sort_by=popularity.desc`);
   }
 
+  async discoverMovies(options: {
+    includeGenres?: number[];
+    excludeGenres?: number[];
+    maxRuntime?: number;
+    sortBy?: 'popularity.desc' | 'vote_average.desc';
+    page?: number;
+  }): Promise<MovieResponse> {
+    const params = new URLSearchParams({
+      sort_by: options.sortBy ?? 'popularity.desc',
+      'vote_count.gte': '200',
+      include_adult: 'false',
+      page: String(options.page ?? 1),
+    });
+
+    if (options.includeGenres?.length) params.set('with_genres', options.includeGenres.join(','));
+    if (options.excludeGenres?.length) params.set('without_genres', options.excludeGenres.join(','));
+    if (options.maxRuntime) params.set('with_runtime.lte', String(options.maxRuntime));
+
+    return this.fetch<MovieResponse>(`/discover/movie?${params.toString()}`);
+  }
+
   getImageUrl(path: string | null, size: 'w200' | 'w300' | 'w500' | 'w780' | 'original' = 'w500'): string {
     if (!path) {
       return 'https://via.placeholder.com/500x750/1a1a1a/666666?text=No+Image';

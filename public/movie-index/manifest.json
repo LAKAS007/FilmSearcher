@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "generatedAt": "2026-07-21T19:41:22.152Z",
+  "count": 50000,
+  "dimensions": 384,
+  "model": {
+    "id": "Xenova/multilingual-e5-small",
+    "revision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+    "dtype": "q8",
+    "pooling": "mean",
+    "normalize": true,
+    "queryPrefix": "query: ",
+    "passagePrefix": "passage: "
+  },
+  "quantization": {
+    "type": "int8",
+    "scale": 127
+  },
+  "files": {
+    "movies": "movies.json",
+    "embeddings": "embeddings.int8.bin"
+  },
+  "source": {
+    "provider": "TMDB",
+    "generatedAt": "2026-07-21T18:54:53.917Z",
+    "language": "en-US"
+  }
+}

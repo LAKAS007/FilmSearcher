@@ -15,3 +15,38 @@ body {
 .app {
   min-height: 100vh;
 }
+
+.app__credits {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem 1rem;
+  color: #667080;
+  background: #080808;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  text-align: left;
+}
+
+.app__credits a {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.app__credits img {
+  display: block;
+  width: 54px;
+  height: auto;
+}
+
+.app__credits p {
+  max-width: 430px;
+  margin: 0;
+}
+
+@media (max-width: 520px) {
+  .app__credits {
+    align-items: flex-start;
+  }
+}

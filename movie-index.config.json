@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "modelId": "Xenova/multilingual-e5-small",
+  "modelRevision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+  "modelDtype": "q8",
+  "dimensions": 384,
+  "quantization": "int8",
+  "quantizationScale": 127,
+  "queryPrefix": "query: ",
+  "passagePrefix": "passage: "
+}
