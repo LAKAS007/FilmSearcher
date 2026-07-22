@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SearchBar } from '../components/SearchBar';
 import { AiSearch } from '../components/AiSearch';
 import { MovieGrid } from '../components/MovieGrid';
+import { LocalMovieChat } from '../components/LocalMovieChat';
 import { Movie, Genre } from '../types/movie';
 import { tmdbService } from '../services/tmdb';
 import { useDebounce } from '../hooks/useDebounce';
@@ -381,6 +382,9 @@ export const Home = () => {
                     </p>
                   )}
                 </div>
+                {!aiLoading && aiMovies.length > 0 && (
+                  <LocalMovieChat query={aiQuery} movies={aiMovies} genres={genres} />
+                )}
                 <MovieGrid movies={aiMovies} loading={aiLoading} />
               </>
             ) : (
